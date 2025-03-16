@@ -1,0 +1,6 @@
+Model(
+  (sage1): SAGEConv(1, 2, aggr=sum)
+  (lin): Linear(in_features=2, out_features=1, bias=True)
+)
+alpha: 0.01
+batch_size: 256
