@@ -42,11 +42,11 @@ class Model(torch.nn.Module):
 
     def forward(self, x, edge_index, batch):
         x = self.sage1(x, edge_index)
-        x = x.relu()
+        x = F.leaky_relu(x)
         x = self.sage2_sum(x,edge_index)
-        x = x + self.sage2_mean(x,edge_index)
-        x = x.relu()
+        x = self.sage2_mean(x,edge_index)
+        x = F.leaky_relu(x)
         x = global_mean_pool(x, batch)
         x = self.lin(x)
-        x = x.relu()
+        x = F.leaky_relu(x)
         return x
