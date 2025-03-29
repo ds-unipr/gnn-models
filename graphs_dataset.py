@@ -5,16 +5,18 @@ import os
 import json
 import zipfile
 
+
 class RandomUndirectedGraphsDataset(InMemoryDataset):
     url = f'https://www.dropbox.com/scl/fi/z1neoiyzs8pzdciifwvmd/dataset.zip?rlkey=hsvg7uhq65p9skovuc6lcucn7&st=v7w9vqop&dl=0&dl=1'
-    
+
     raw_zip_file = 'data.zip'
     processed_file = 'data.pt'
 
     def __init__(self, root, force_reload=False, transform=None, pre_transform=None):
         super().__init__(root, transform, pre_transform)
         self.force_reload = force_reload
-        self.data, self.slices = torch.load(self.processed_paths[0])
+        self.data, self.slices = torch.load(
+            self.processed_paths[0], weights_only=False)
 
     @property
     def raw_file_names(self):
@@ -47,7 +49,8 @@ class RandomUndirectedGraphsDataset(InMemoryDataset):
             for file in files:
                 if file.lower().endswith('.json'):
                     json_path = os.path.join(root_dir, file)
-                    print(f"Reading {json_path}\t {count}/{len(files)}", end='\r')
+                    print(
+                        f"Reading {json_path}\t {count}/{len(files)}", end='\r')
                     count += 1
                     try:
                         with open(json_path, 'r', encoding='utf-8') as f:
@@ -59,16 +62,20 @@ class RandomUndirectedGraphsDataset(InMemoryDataset):
                     invariants_order = json_data.get("invariants_order", [])
 
                     for graph in json_data.get("graph_list", []):
-                        num_nodes = nodes_count if nodes_count is not None else len(graph.get("nodes", []))
+                        num_nodes = nodes_count if nodes_count is not None else len(
+                            graph.get("nodes", []))
                         x = torch.ones((num_nodes, 1), dtype=torch.float)
                         edges = graph.get("edges", [])
                         if len(edges) > 0:
-                            edge_index = torch.tensor(edges, dtype=torch.long).t().contiguous()
+                            edge_index = torch.tensor(
+                                edges, dtype=torch.long).t().contiguous()
                         else:
                             edge_index = torch.empty((2, 0), dtype=torch.long)
                         edge_index = to_undirected(edge_index)
-                        invarinats_values = torch.tensor(graph.get("graph_features", []), dtype=torch.float)
-                        data = Data(x=x, edge_index=edge_index, y=invarinats_values)
+                        invarinats_values = torch.tensor(
+                            graph.get("graph_features", []), dtype=torch.float)
+                        data = Data(x=x, edge_index=edge_index,
+                                    y=invarinats_values)
                         data.invariants_order = invariants_order
                         data_list.append(data)
 
