@@ -48,5 +48,4 @@ class Model(torch.nn.Module):
         x = F.leaky_relu(x)
         x = global_mean_pool(x, batch)
         x = self.lin(x)
-        x = F.leaky_relu(x)
         return x

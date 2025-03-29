@@ -26,5 +26,4 @@ class Model(torch.nn.Module):
         x = x.relu()
         x = global_mean_pool(x, batch)
         x = self.lin(x)
-        x = x.relu()
         return x

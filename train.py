@@ -4,12 +4,13 @@ from torch.utils.data import random_split
 import utils
 import os
 from torch_geometric.loader import DataLoader
+import time
 
 
 ##### TO BE CHANGED FOR EVERY TRY #####
 
-import models.model_d5 as m
-model_name = 'modelD5'
+import models.model_d4 as m
+model_name = 'modelD4'
 
 #######################################
 
@@ -33,26 +34,18 @@ criterion = m.criterion
 model = model.to(device)
 
 def train(data_loader, model, epoch: utils.EpochSummary):
-    errs = torch.zeros(len(data_loader), device=device)
     model.train()
-    for i, data in enumerate(data_loader):
+    for data in data_loader:
         data = data.to(device)
         optimizer.zero_grad()
         out = model(data.x, data.edge_index, data.batch)
         out = torch.squeeze(out)
         reshaped_y = data.y.view(-1, 7)
         target = reshaped_y[:, invariant_idx]
-        out_target_distance = torch.abs(out - target) / ((torch.abs(out) + torch.abs(target)) / 2 + 1e-9)
-        err = out_target_distance.mean()
-        errs[i] = err
         loss = criterion(out, target)
         epoch.add_trainging_loss(loss.item())
         loss.backward()
         optimizer.step()
-    error = errs.mean().item()
-    print(f"training error: {error}")
-    return error
-
 
 def test(data_loader, model):
     errs = torch.zeros(len(data_loader), device=device)
@@ -62,17 +55,18 @@ def test(data_loader, model):
         with torch.no_grad():
             out = model(data.x, data.edge_index, data.batch)
             out = torch.squeeze(out)
-            target = data.y.view(-1, 7)[:, invariant_idx]
-            out_target_distance = torch.abs(out - target) / ((torch.abs(out) + torch.abs(target)) / 2 + 1e-9)
-            err = out_target_distance.mean()
+            err = utils.calc_error(y=data.y, out=out, invariant_index=invariant_idx)
             errs[i] = err
     error = errs.mean().item()
     print(f"test error: {error}")
     return error
 
+# calcolare loss come criterion((out/target), 1)
+# calcolare errore come |out - target|/|target|
 
 dataset = RandomUndirectedGraphsDataset(root="data")
 dataset = dataset.shuffle()
+
 
 invariant_idx = dataset[0].invariants_order.index("spectral_radius_laplacian")
 
@@ -86,9 +80,10 @@ epoch_summaries = []
 for epoch in range(epochs):
     epoch_summary = utils.EpochSummary(index=epoch)
     print(f"\nEpoch {epoch+1}/{epochs}")
-    train_err = train(model=model, data_loader=train_loader, epoch=epoch_summary)
+    train(model=model, data_loader=train_loader, epoch=epoch_summary)
     test_err = test(model=model, data_loader=test_loader)
-    epoch_summary.commit(train_error=train_err, test_error=test_err)
+    epoch_summary.commit(test_error=test_err)
     epoch_summaries.append(epoch_summary)
+    epoch_summary.print_avg_loss()
 
 utils.write_epoch_summary(model_name=model_name, epochs=epoch_summaries)

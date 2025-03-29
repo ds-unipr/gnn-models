@@ -8,7 +8,8 @@ alpha = 0.0001
 train_batch_size = 256
 test_batch_size = 256
 hidden_channels = [16]
-criterion = torch.nn.MSELoss()
+criterion = utils.MSLELoss()
+# criterion = torch.nn.MSELoss()
 
 class Model(torch.nn.Module):
     def __init__(self, h_channels: List[int]):
