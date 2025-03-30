@@ -10,7 +10,7 @@ import time
 ##### TO BE CHANGED FOR EVERY TRY #####
 
 import models.model_l1 as m
-model_name = 'modelL1'
+model_name = 'modelD5'
 
 #######################################
 

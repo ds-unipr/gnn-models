@@ -1,9 +1,29 @@
 import torch
 from torch_geometric.data import Data, InMemoryDataset, download_url
-from torch_geometric.utils import to_undirected
+from torch_geometric.utils import to_undirected, to_dense_adj
 import os
 import json
 import zipfile
+
+def extract_upper_triangle(data, max_nodes=50):
+    n = data.num_nodes
+    adj = to_dense_adj(data.edge_index, max_num_nodes=n)[0]
+    adj.fill_diagonal_(0)
+    
+    tril_indices = torch.tril_indices(n, n, offset=-1)
+    upper_vec = adj[tril_indices[0], tril_indices[1]]
+    
+    max_edges = max_nodes * (max_nodes - 1) // 2
+    
+    padded_vec = torch.zeros(max_edges, dtype=upper_vec.dtype)
+    mask = torch.zeros(max_edges, dtype=torch.float)
+    
+    num_edges = upper_vec.numel()
+    
+    padded_vec[:num_edges] = upper_vec
+    mask[:num_edges] = 1.0
+    
+    return padded_vec, mask
 
 
 class RandomUndirectedGraphsDataset(InMemoryDataset):
@@ -12,11 +32,12 @@ class RandomUndirectedGraphsDataset(InMemoryDataset):
     raw_zip_file = 'data.zip'
     processed_file = 'data.pt'
 
-    def __init__(self, root, force_reload=False, transform=None, pre_transform=None):
+    def __init__(self, root, force_reload=False, transform=None, pre_transform=None, plain_vector=False):
         super().__init__(root, transform, pre_transform)
         self.force_reload = force_reload
-        self.data, self.slices = torch.load(
-            self.processed_paths[0], weights_only=False)
+        self.data, self.slices = torch.load(self.processed_paths[0], weights_only=False)
+        self.plain_vector = plain_vector
+        self.invariants_order = self._data.invariants_order[0] if len(self._data.invariants_order) > 0 else None
 
     @property
     def raw_file_names(self):
@@ -44,6 +65,7 @@ class RandomUndirectedGraphsDataset(InMemoryDataset):
         print("Extraction completed.")
 
         data_list = []
+        invariants_order = None
         for root_dir, _, files in os.walk(extract_dir):
             count = 1
             for file in files:
@@ -77,8 +99,21 @@ class RandomUndirectedGraphsDataset(InMemoryDataset):
                         data = Data(x=x, edge_index=edge_index,
                                     y=invarinats_values)
                         data.invariants_order = invariants_order
+                        (vec, mask) = extract_upper_triangle(data, max_nodes=50)
+                        data.vectorized_representation = vec
+                        data.mask = mask
                         data_list.append(data)
 
         data, slices = self.collate(data_list)
+        self.invariants_order = invariants_order
         torch.save((data, slices), self.processed_paths[0])
         print("Processing completed.")
+
+    def __getitem__(self, idx):
+        item = super().__getitem__(idx)
+        if self.plain_vector == True:
+            vec = item.vectorized_representation
+            mask = item.mask
+            label = item.y
+            return torch.cat([vec, mask], dim=0), label
+        return item
