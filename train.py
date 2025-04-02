@@ -1,6 +1,7 @@
 from graphs_dataset import RandomUndirectedGraphsDataset
 import torch
 from torch.utils.data import random_split
+from graphs_plots import plot_single_model
 import utils
 import os
 from torch_geometric.loader import DataLoader
@@ -93,3 +94,4 @@ for epoch in range(epochs):
     epoch_summary.print_avg_loss()
 
 utils.write_epoch_summary(model_name=model_name, epochs=epoch_summaries)
+plot_single_model(model_name=model_name)
