@@ -1,0 +1,8 @@
+Model(
+  (sageConv1): SAGEConv(1, 20, aggr=sum)
+  (sageConv2): SAGEConv(20, 20, aggr=sum)
+  (sageConv3): SAGEConv(20, 20, aggr=mean)
+  (lin): Linear(in_features=60, out_features=1, bias=True)
+)
+alpha: 5e-05
+batch_size: 512

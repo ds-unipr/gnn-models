@@ -10,8 +10,8 @@ import time
 
 ##### TO BE CHANGED FOR EVERY TRY #####
 
-import models.model_d5 as m
-model_name = 'modelD5_100epochs'
+import models.model_l2 as m
+model_name = 'modelL2_100epochs'
 
 #######################################
 
