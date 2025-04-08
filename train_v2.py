@@ -10,8 +10,8 @@ import time
 
 ##### TO BE CHANGED FOR EVERY TRY #####
 
-import models.model_l3 as m
-model_name = 'modelL3'
+import models.model_l3_v3 as m
+model_name = 'modelL3_v3_scheduler'
 
 #######################################
 
@@ -29,8 +29,18 @@ else:
     device = torch.device("cpu")
 
 
-optimizer = torch.optim.Adam(model.parameters(), lr=m.alpha)
+optimizer = torch.optim.AdamW(
+    model.parameters(), lr=m.alpha, weight_decay=1e-4)
+
 criterion = m.criterion
+
+scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+    optimizer,
+    mode='min',
+    factor=0.5,
+    patience=5,
+    min_lr=1e-6
+)
 
 model = model.to(device)
 
@@ -82,14 +92,23 @@ train_loader = DataLoader(
 test_loader = DataLoader(
     test_dataset, batch_size=m.test_batch_size, shuffle=True)
 
+prev_lr = m.alpha
 epochs = 50
 epoch_summaries = []
 for epoch in range(epochs):
     epoch_summary = utils.EpochSummary(index=epoch)
     print(f"\nEpoch {epoch+1}/{epochs}")
+
     train(model=model, data_loader=train_loader, epoch=epoch_summary)
     test_err = test(model=model, data_loader=test_loader)
     epoch_summary.commit(test_error=test_err)
+
+    scheduler.step(test_err)
+    current_lr = scheduler.optimizer.param_groups[0]['lr']
+    if current_lr != prev_lr:
+        print(f"learning rate decreased to {current_lr}")
+    prev_lr = current_lr
+
     epoch_summaries.append(epoch_summary)
     epoch_summary.print_avg_loss()
 

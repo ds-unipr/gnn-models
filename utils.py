@@ -29,7 +29,7 @@ class EpochSummary():
         self.test_error = 0
 
     def print_avg_loss(self):
-        print(np.mean(self.batch_training_losses))
+        print(f"train loss: {np.mean(self.batch_training_losses)}")
 
     def add_training_loss(self, loss):
         self.batch_training_losses.append(loss)
