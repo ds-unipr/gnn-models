@@ -19,8 +19,7 @@ class MSLELoss(nn.Module):
 
     def forward(self, out, target):
         return self.mse(torch.sign(out) * torch.log(torch.abs(out) + 1), torch.sign(target) * torch.log(torch.abs(target) + 1))
-
-
+    
 class EpochSummary():
     def __init__(self, index):
         self.index = index
@@ -40,8 +39,14 @@ class EpochSummary():
 
     def format(self):
         return '\n'.join(f"{self.index};{self.elapsed_time:.2f};{self.test_error:.4f};{i};{batch_loss:.4f}" for i, batch_loss in enumerate(self.batch_training_losses))
+    
+    def commit_integer(self, test_accuracy):
+        self.elapsed_time = time.time() - self.start
+        self.test_accuracy = test_accuracy
 
-
+    def format_integer(self):
+        return '\n'.join(f"{self.index};{self.elapsed_time:.2f};{self.test_accuracy:.4f};{i};{batch_loss:.4f}" for i, batch_loss in enumerate(self.batch_training_losses))
+    
 def create_out_dirs(model_name):
     Path(f"out/{model_name}").mkdir(parents=True, exist_ok=True)
 
@@ -57,6 +62,12 @@ def write_epoch_summary(model_name, epochs: List[EpochSummary]):
         file.write(
             "epoch;epoch_training_time;epoch_test_error;batch_index;batch_loss\n")
         file.writelines([f"{row.format()}\n" for row in epochs])
+
+def write_epoch_summary_integer(model_name, epochs: List[EpochSummary]):
+    with open(os.path.join(f"out/{model_name}/training.csv"), 'w') as file:
+        file.write(
+            "epoch;epoch_training_time;epoch_test_accuracy;batch_index;batch_loss\n")
+        file.writelines([f"{row.format_integer()}\n" for row in epochs])
 
 
 def calc_error(y, out, invariant_index):

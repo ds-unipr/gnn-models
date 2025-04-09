@@ -17,7 +17,10 @@ def plot_single_model(model_name):
     training_time = df['epoch_training_time']
     batch_indices = df['batch_index']
     batch_losses = df['batch_loss']
-    test_errors = df.groupby('epoch')['epoch_test_error'].mean()
+    if 'epoch_test_error' in df.columns:
+        test_errors = df.groupby('epoch')['epoch_test_error'].mean()
+    else:
+        test_accuracy = df.groupby('epoch')['epoch_test_accuracy'].mean()
     df["batch_index_continuo"] = df["batch_index"] + df["epoch"] * df["batch_index"].max()
     max_batch_index = df["batch_index_continuo"].max()
 
@@ -72,14 +75,24 @@ def plot_single_model(model_name):
     axes[1].legend(fontsize=16)
     axes[1].grid(True, linestyle='--', alpha=0.5)
 
-    # GRAPH 3: Test Error 
-    axes[2].plot(epochs, test_errors, label="Test Error", marker='s', linestyle='-')
-    axes[2].set_title("Test Error Over Epochs", fontsize=20)
-    axes[2].set_xlabel("Epochs", fontsize=18)
-    axes[2].set_ylabel("Error", fontsize=18)
-    axes[2].set_xticks(np.arange(0, max(epochs) + 1, 5))  # Tick ogni 5 epoch
-    axes[2].legend(fontsize=16)
-    axes[2].grid(True, linestyle='--', alpha=0.5)
+    # GRAPH 3: Test Error
+    if 'test_errors' in locals() and test_errors is not None:
+        axes[2].plot(epochs, test_errors, label="Test Error", marker='s', linestyle='-')
+        axes[2].set_title("Test Error Over Epochs", fontsize=20)
+        axes[2].set_xlabel("Epochs", fontsize=18)
+        axes[2].set_ylabel("Error", fontsize=18)
+        axes[2].set_xticks(np.arange(0, max(epochs) + 1, 5))  # Tick ogni 5 epoch
+        axes[2].legend(fontsize=16)
+        axes[2].grid(True, linestyle='--', alpha=0.5)
+    else:
+        # Se test_errors non è definito, usa test_accuracy
+        axes[2].plot(epochs, test_accuracy, label="Test Accuracy", marker='s', linestyle='-')
+        axes[2].set_title("Test Accuracy Over Epochs", fontsize=20)
+        axes[2].set_xlabel("Epochs", fontsize=18)
+        axes[2].set_ylabel("Accuracy", fontsize=18)
+        axes[2].set_xticks(np.arange(0, max(epochs) + 1, 5))  # Tick ogni 5 epoch
+        axes[2].legend(fontsize=16)
+        axes[2].grid(True, linestyle='--', alpha=0.5)
 
     # Save in one PDF
     plt.tight_layout()
