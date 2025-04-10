@@ -64,16 +64,28 @@ def plot_single_model(model_name):
             x_points.append(batch_indices[i])
             y_points.append(batch_losses[i])
 
-    axes[1].plot(x_points, y_points, label="Training Loss", linestyle='-', alpha=0.7)
-    axes[1].set_title("Training Loss over Batches (Detail)", fontsize=20)
-    axes[1].set_xlabel("Batch Index", fontsize=18)
-    axes[1].set_ylabel("Loss", fontsize=18)
-    xticks_step = max_batch_index // 10
-    axes[1].set_xticks(np.arange(0, max_batch_index + 1, xticks_step))
-    axes[1].set_yticks(np.arange(0, 0.035, 0.01))
-    axes[1].set_ylim(0, 0.03)
-    axes[1].legend(fontsize=16)
-    axes[1].grid(True, linestyle='--', alpha=0.5)
+    if 'test_errors' in locals() and test_errors is not None:
+        axes[1].plot(x_points, y_points, label="Training Loss", linestyle='-', alpha=0.7)
+        axes[1].set_title("Training Loss over Batches (Detail)", fontsize=20)
+        axes[1].set_xlabel("Batch Index", fontsize=18)
+        axes[1].set_ylabel("Loss", fontsize=18)
+        xticks_step = max_batch_index // 10
+        axes[1].set_xticks(np.arange(0, max_batch_index + 1, xticks_step))
+        axes[1].set_yticks(np.arange(0, 0.035, 0.01))
+        axes[1].set_ylim(0, 0.03)
+        axes[1].legend(fontsize=16)
+        axes[1].grid(True, linestyle='--', alpha=0.5)
+    else:
+        axes[1].plot(x_points, y_points, label="Training Loss", linestyle='-', alpha=0.7)
+        axes[1].set_title("Training Loss over Batches (Detail)", fontsize=20)
+        axes[1].set_xlabel("Batch Index", fontsize=18)
+        axes[1].set_ylabel("Loss", fontsize=18)
+        xticks_step = max_batch_index // 10
+        axes[1].set_xticks(np.arange(0, max_batch_index + 1, xticks_step))
+        axes[1].set_yticks(np.arange(0, 1.55, 0.2))
+        axes[1].set_ylim(0, 1.5)
+        axes[1].legend(fontsize=16)
+        axes[1].grid(True, linestyle='--', alpha=0.5)
 
     # GRAPH 3: Test Error
     if 'test_errors' in locals() and test_errors is not None:
@@ -144,15 +156,22 @@ def plot_selected_models(model_names):
                     max_batch_index = max(max_batch_index, df["batch_index_continuo"].max())
                     batch_indices = df["batch_index_continuo"]
                     batch_losses = df["batch_loss"]
-                    transformed_losses = np.clip(batch_losses, None, 0.02)  
+                    if 'epoch_test_error' in df.columns:
+                        transformed_losses = np.clip(batch_losses, None, 0.02)
+                    else:
+                        transformed_losses = np.clip(batch_losses, None, 1.5)  
                     axes[1].plot(batch_indices[::48], transformed_losses[::48], label=f"{model_name}", linestyle='-')
         axes[1].set_xlabel("Batch Index", fontsize=18)
         axes[1].set_ylabel("Training Loss", fontsize=18)
         axes[1].set_title("Comparison of Training (detail) Loss Across Selected Models", fontsize=22)
         xticks_step = max_batch_index // 10  
         axes[1].set_xticks(np.arange(0, max_batch_index + 1, xticks_step))
-        axes[1].set_yticks(np.arange(0, 0.025, 0.005)) 
-        axes[1].set_ylim(0, 0.02)
+        if 'epoch_test_error' in df.columns:
+            axes[1].set_yticks(np.arange(0, 0.025, 0.005)) 
+            axes[1].set_ylim(0, 0.02)
+        else:
+            axes[1].set_yticks(np.arange(0, 1.55, 0.1)) 
+            axes[1].set_ylim(0, 1.5)
         axes[1].legend(fontsize=18)
         axes[1].grid(True, linestyle='--', alpha=0.5)
 
@@ -164,11 +183,18 @@ def plot_selected_models(model_names):
                 for file in csv_files:
                     df = pd.read_csv(os.path.join(model_folder, file), delimiter=';')
                     epochs = df["epoch"].unique()
-                    test_errors = df.groupby("epoch")["epoch_test_error"].mean()
-                    axes[2].plot(epochs, test_errors, label=f"{model_name}", linestyle='-')
+                    if 'epoch_test_error' in df.columns:
+                        test_errors = df.groupby('epoch')['epoch_test_error'].mean()
+                        axes[2].plot(epochs, test_errors, label=f"{model_name}", linestyle='-')
+                    else:
+                        test_accuracy = df.groupby('epoch')['epoch_test_accuracy'].mean()
+                        axes[2].plot(epochs, test_accuracy, label=f"{model_name}", linestyle='-')
         axes[2].set_xlabel("Epochs", fontsize=18)
-        axes[2].set_ylabel("Test Error", fontsize=18)
         axes[2].set_title("Comparison of Test Errors Across Selected Models", fontsize=22)
+        if 'test_errors' in locals() and test_errors is not None:
+            axes[2].set_ylabel("Test Error", fontsize=18)
+        else:
+            axes[2].set_ylabel("Test Accuracy", fontsize=18)
         axes[2].set_xticks(np.arange(0, max(epochs) + 2, 5)) 
         axes[2].legend(fontsize=18)
         axes[2].grid(True, linestyle='--', alpha=0.5)
@@ -181,15 +207,25 @@ def plot_selected_models(model_names):
                 for file in csv_files:
                     df = pd.read_csv(os.path.join(model_folder, file), delimiter=';')
                     epochs = df["epoch"].unique()
-                    test_errors = df.groupby("epoch")["epoch_test_error"].mean()
-                    transformed_errors = np.clip(test_errors, None, 0.1) 
-                    axes[3].plot(epochs, transformed_errors, label=f"{model_name}", linestyle='-')
+                    if 'epoch_test_error' in df.columns:
+                        test_errors = df.groupby('epoch')['epoch_test_error'].mean()
+                        transformed_errors = np.clip(test_errors, None, 0.1) 
+                        axes[3].plot(epochs, transformed_errors, label=f"{model_name}", linestyle='-')
+                    else:
+                        test_accuracy = df.groupby('epoch')['epoch_test_accuracy'].mean()
+                        transformed_errors = np.clip(test_accuracy, 0.7, 1) 
+                        axes[3].plot(epochs, transformed_errors, label=f"{model_name}", linestyle='-')
         axes[3].set_xlabel("Epochs", fontsize=18)
-        axes[3].set_ylabel("Test Error", fontsize=18)
         axes[3].set_title("Comparison of Test Errors (detail) Across Selected Models", fontsize=22)
         axes[3].set_xticks(np.arange(0, max(epochs) + 2, 5))
-        axes[3].set_yticks(np.arange(0, 0.1, 0.02))  # Tick ogni 0.01 per precisione
-        axes[3].set_ylim(0, 0.1) 
+        if 'test_errors' in locals() and test_errors is not None:
+            axes[3].set_ylabel("Test Error", fontsize=18)
+            axes[3].set_yticks(np.arange(0, 0.1, 0.02))  
+            axes[3].set_ylim(0, 0.1)
+        else:
+            axes[3].set_ylabel("Test Accuracy", fontsize=18)
+            axes[3].set_yticks(np.arange(0.65, 1.1, 0.05))  
+            axes[3].set_ylim(0.7, 1) 
         axes[3].legend(fontsize=18)
         axes[3].grid(True, linestyle='--', alpha=0.5)
 
