@@ -1,10 +1,12 @@
 from pathlib import Path
 import os
+import matplotlib.pyplot as plt
 from typing import List
 import time
 import torch
 import sys
 import torch.nn as nn
+from sklearn.metrics import confusion_matrix, classification_report
 import numpy as np
 
 
@@ -19,6 +21,43 @@ class MSLELoss(nn.Module):
 
     def forward(self, out, target):
         return self.mse(torch.sign(out) * torch.log(torch.abs(out) + 1), torch.sign(target) * torch.log(torch.abs(target) + 1))
+    
+def plot_confusion_matrix(y_true, y_pred, save_path=None):
+    cm = confusion_matrix(y_true, y_pred)
+    num_classes = cm.shape[0]
+
+    # Applichiamo una scala logaritmica per visualizzare meglio i valori bassi accanto ai picchi
+    cm_log = np.log1p(cm)  # log(1 + x) evita log(0)
+
+    fig, ax = plt.subplots(figsize=(max(10, num_classes // 2), max(8, num_classes // 3)))
+
+    cax = ax.matshow(cm_log, cmap='Blues')
+    fig.colorbar(cax)
+
+    # Etichette sugli assi
+    ax.set_xlabel('Predicted Label')
+    ax.set_ylabel('True Label')
+    ax.set_title('Confusion Matrix (log scale)')
+
+    ax.set_xticks(np.arange(num_classes))
+    ax.set_yticks(np.arange(num_classes))
+    ax.set_xticklabels(np.arange(num_classes), rotation=90)
+    ax.set_yticklabels(np.arange(num_classes))
+
+    # Evidenzia la diagonale con un bordo rosso
+    for i in range(num_classes):
+        rect = plt.Rectangle((i - 0.5, i - 0.5), 1, 1, fill=False, edgecolor='red', linewidth=1.5)
+        ax.add_patch(rect)
+
+    plt.tight_layout()
+
+    if save_path:
+        plt.savefig(save_path, dpi=300)
+        print(f"Confusion matrix salvata in: {save_path}")
+    else:
+        plt.show()
+
+    plt.close()
     
 class EpochSummary():
     def __init__(self, index):

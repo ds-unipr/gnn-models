@@ -12,7 +12,7 @@ from graphs_plots import plot_single_model, plot_selected_models
 
 ##### INSERT models, USE TO FORCE A plot_selected_models ON OLD MODELS #####
 
-model_names = ["MLP_diameter","MLP_matching_number", "MLP_clique_number"]
+model_names = ["modelA3_clique_number","MLP_clique_number"]
 plot_selected_models(model_names=model_names)
 
 #######################################

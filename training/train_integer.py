@@ -2,6 +2,7 @@ from graphs_dataset import RandomUndirectedGraphsDataset
 import torch
 from torch.utils.data import random_split
 from graphs_plots import plot_single_model
+from sklearn.metrics import balanced_accuracy_score
 import numpy as np
 import sys
 import utils
@@ -13,9 +14,9 @@ import time
 ##### TO BE CHANGED FOR EVERY TRY #####
 
 import models.model_a3 as m
-model_name = 'modelA3_clique_number'
+model_name = 'MLP_clique_number'
 
-invariant_target = "clique_number"
+invariant_target = "clique_number"  #  matching_number, diameter, clique_number, indipendence_number
 
 #######################################
 
@@ -56,41 +57,39 @@ def train(data_loader, model, epoch: utils.EpochSummary):
         optimizer.step()
 
 
-def test(data_loader, model):
-    top1_correct = 0
-    top3_correct = 0
-    total = 0
+def test(data_loader, model, return_preds=False):
+    all_preds = []
+    all_targets = []
+
     model.eval()
-    for i, data in enumerate(data_loader):
+    for data in data_loader:
         data = data.to(device)
         with torch.no_grad():
             out = model(data.x, data.edge_index, data.batch)
             out = torch.squeeze(out)
             reshaped_y = data.y.view(-1, 7)
-            target = reshaped_y[:, invariant_idx]
-            valid_mask = target != -1
-            out_valid = out[valid_mask]
-            target_valid = target[valid_mask]
-            if len(target_valid) == 0:
-                continue 
-            _, top1_pred = out_valid.max(dim=1)
-            top1_correct_batch = (top1_pred == target_valid).sum().item()
-            top3_preds = torch.topk(out_valid, 3, dim=1).indices
-            top3_correct_batch = (top3_preds == target_valid.view(-1, 1)).sum().item()
-            total_batch = len(target_valid)
-            top1_correct += top1_correct_batch
-            top3_correct += top3_correct_batch
-            total += total_batch
-    if total > 0:
-        top1_accuracy = top1_correct / total
-        top3_accuracy = top3_correct / total
-        print(f"Test top-1 accuracy: {top1_accuracy}")
-        print(f"Test top-3 accuracy: {top3_accuracy}")
-    else:
-        top1_accuracy = 0
-        top3_accuracy = 0
+            targets = reshaped_y[:, invariant_idx]
 
-    return top3_accuracy
+            valid_mask = targets != -1
+            logits_valid = out[valid_mask]
+            targets_valid = targets[valid_mask]
+
+            if len(targets_valid) == 0:
+                continue
+
+            pred_labels = logits_valid.argmax(dim=1)
+            all_preds.extend(pred_labels.cpu().numpy())
+            all_targets.extend(targets_valid.cpu().numpy())
+
+    if len(all_targets) == 0:
+        return 0.0 if not return_preds else (0.0, [], [])
+
+    balanced_acc = balanced_accuracy_score(all_targets, all_preds)
+    print(f"Balanced Accuracy: {balanced_acc:.4f}")
+
+    if return_preds:
+        return balanced_acc, all_preds, all_targets
+    return balanced_acc
 
 # calcolare loss come criterion((out/target), 1)
 # calcolare errore come |out - target|/|target|
@@ -109,14 +108,19 @@ train_loader = DataLoader(
 test_loader = DataLoader(
     test_dataset, batch_size=m.test_batch_size, shuffle=True)
 
-epochs = 100
+epochs = 50
 epoch_summaries = []
 for epoch in range(epochs):
     epoch_summary = utils.EpochSummary(index=epoch)
     print(f"\nEpoch {epoch+1}/{epochs}")
     train(model=model, data_loader=train_loader, epoch=epoch_summary)
-    test_accuracy = test(model=model, data_loader=test_loader)
-    epoch_summary.commit_integer(test_accuracy = test_accuracy)
+    if epoch == epochs - 1:
+        test_score, all_preds, all_targets = test(model=model, data_loader=test_loader, return_preds=True)
+        cm_path = f"out/{model_name}/confusion_matrix.png"
+        utils.plot_confusion_matrix(all_targets, all_preds, save_path=cm_path)
+    else:
+        test_score = test(model=model, data_loader=test_loader)
+    epoch_summary.commit_integer(test_accuracy=test_score)
     epoch_summaries.append(epoch_summary)
     epoch_summary.print_avg_loss()
 
