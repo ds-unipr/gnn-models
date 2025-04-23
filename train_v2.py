@@ -11,7 +11,7 @@ import time
 ##### TO BE CHANGED FOR EVERY TRY #####
 
 import models.model_l3_v3 as m
-model_name = 'modelL3_v3_scheduler'
+model_name = 'modelL3_v3_sgd_cosine_100epochs'
 
 #######################################
 
@@ -29,18 +29,24 @@ else:
     device = torch.device("cpu")
 
 
-optimizer = torch.optim.AdamW(
-    model.parameters(), lr=m.alpha, weight_decay=1e-4)
+# optimizer = torch.optim.AdamW(model.parameters(), lr=m.alpha, weight_decay=1e-4)
+optimizer = torch.optim.SGD(
+    model.parameters(),
+    lr=m.alpha,
+    momentum=0.9,
+    weight_decay=5e-5
+)
+
 
 criterion = m.criterion
 
-scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+# scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5, min_lr=1e-6)
+scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
     optimizer,
-    mode='min',
-    factor=0.5,
-    patience=5,
-    min_lr=1e-6
+    T_max=100,
+    eta_min=1e-6
 )
+
 
 model = model.to(device)
 
@@ -92,8 +98,9 @@ train_loader = DataLoader(
 test_loader = DataLoader(
     test_dataset, batch_size=m.test_batch_size, shuffle=True)
 
-prev_lr = m.alpha
-epochs = 50
+# prev_lr = m.alpha
+
+epochs = 100
 epoch_summaries = []
 for epoch in range(epochs):
     epoch_summary = utils.EpochSummary(index=epoch)
@@ -103,11 +110,12 @@ for epoch in range(epochs):
     test_err = test(model=model, data_loader=test_loader)
     epoch_summary.commit(test_error=test_err)
 
-    scheduler.step(test_err)
-    current_lr = scheduler.optimizer.param_groups[0]['lr']
-    if current_lr != prev_lr:
-        print(f"learning rate decreased to {current_lr}")
-    prev_lr = current_lr
+    scheduler.step()
+
+    # current_lr = scheduler.optimizer.param_groups[0]['lr']
+    # if current_lr != prev_lr:
+    #    print(f"learning rate decreased to {current_lr}")
+    # prev_lr = current_lr
 
     epoch_summaries.append(epoch_summary)
     epoch_summary.print_avg_loss()
