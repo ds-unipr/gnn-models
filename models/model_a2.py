@@ -11,10 +11,10 @@ import utils
 #########################
 
 alpha = 7.5e-5
-train_batch_size = 256
-test_batch_size = 256
-hidden_channels = [64]
-out_features=51
+train_batch_size = 512
+test_batch_size = 512
+hidden_channels = [16]
+out_features=51            #48 diameter, 26 matching_number, 49 clique_number, 51 indipendence number
 criterion = torch.nn.CrossEntropyLoss()
 
 

@@ -38,8 +38,8 @@ else:
 
 model = GraphMLP()
 
-utils.create_out_dirs("MLP")
-utils.write_model("MLP", model, alpha=1e-4, batch_size=256)
+utils.create_out_dirs("MLP_adiacenza")
+utils.write_model("MLP_adiacenza", model, alpha=1e-4, batch_size=256)
 
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 criterion = utils.MSLELoss()
@@ -78,7 +78,7 @@ def test(data_loader, model):
 
 dataset = RandomUndirectedGraphsDataset(root="data", plain_vector=True)
 
-invariant_idx = dataset.invariants_order.index("spectral_radius_laplacian")
+invariant_idx = dataset.invariants_order.index("spectral_radius_adjacency")
 
 train_dataset, test_dataset = random_split(dataset, [.8, .2])
 
@@ -96,4 +96,4 @@ for epoch in range(epochs):
     epoch_summaries.append(epoch_summary)
     epoch_summary.print_avg_loss()
 
-utils.write_epoch_summary(model_name="MLP", epochs=epoch_summaries)
+utils.write_epoch_summary(model_name="MLP_adiacenza", epochs=epoch_summaries)

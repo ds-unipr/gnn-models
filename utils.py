@@ -8,6 +8,9 @@ import sys
 import torch.nn as nn
 from sklearn.metrics import confusion_matrix, classification_report
 import numpy as np
+from torch.utils.data import Sampler
+from collections import defaultdict
+import random
 
 
 # loss = mse(out/(target + epsilon), 1) => if target = 0  and out = 0.1 => loss = mse(10e9, 1)
@@ -58,6 +61,97 @@ def plot_confusion_matrix(y_true, y_pred, save_path=None):
         plt.show()
 
     plt.close()
+
+def compute_class_weights(dataset, invariant_idx, power=0.5):
+    counts = defaultdict(int)
+    for data in dataset:
+        label = int(data.y[invariant_idx].item())
+        if label != -1:
+            counts[label] += 1
+
+    num_classes = max(counts.keys()) + 1
+    freq = torch.zeros(num_classes)
+    for cls, count in counts.items():
+        freq[cls] = count
+
+    weights = (1.0 / (freq + 1e-6)) ** power
+    weights = weights / weights.mean()  # normalizzazione
+    return weights
+
+class StratifiedBatchSampler(Sampler):
+    def __init__(self, dataset, invariant_idx, batch_size, min_examples_per_class=1, shuffle=True):
+        super().__init__()
+        self.dataset = dataset
+        self.batch_size = batch_size
+        self.shuffle = shuffle
+        self.invariant_idx = invariant_idx
+        self.min_examples_per_class = min_examples_per_class
+        self.label_to_indices = defaultdict(list)
+        for idx, data in enumerate(dataset):
+            label = int(data.y[invariant_idx].item())
+            if label != -1:
+                self.label_to_indices[label].append(idx)
+        self.labels_set = sorted(self.label_to_indices.keys())
+        self.num_classes = len(self.labels_set)
+
+        print(f"Numero di classi nel dataset: {self.num_classes}")
+        print(f"Batch size passato: {self.batch_size}")
+        self.samples_per_class = (self.batch_size - self.num_classes * self.min_examples_per_class) // self.num_classes
+        if self.samples_per_class < 0:
+            raise ValueError(f"Il numero minimo di esempi per classe ({self.min_examples_per_class}) è troppo grande per il batch size ({self.batch_size}).")
+
+    def __iter__(self):
+        indices_per_class = {
+            label: indices.copy()
+            for label, indices in self.label_to_indices.items()
+        }
+        if self.shuffle:
+            for indices in indices_per_class.values():
+                random.shuffle(indices)
+        batches = []
+        while True:
+            batch = []
+            exhausted_classes = []  # Lista per tracciare le classi esaurite
+            for label in self.labels_set:
+                indices = indices_per_class[label]
+                # Se la classe ha abbastanza campioni, aggiungiamo il minimo richiesto
+                if len(indices) >= self.min_examples_per_class:
+                    min_samples = indices[:self.min_examples_per_class]
+                    indices_per_class[label] = indices[self.min_examples_per_class:]
+                else:
+                    # Se la classe ha esaurito gli esempi, la segnaliamo come esaurita
+                    min_samples = indices[:]
+                    indices_per_class[label] = []
+                    exhausted_classes.append(label)
+                
+                batch.extend(min_samples)
+
+            remaining_samples = self.batch_size - len(batch)
+            if remaining_samples > 0:
+                # Completiamo il batch con campioni casuali da altre classi
+                all_indices = []
+                for label in self.labels_set:
+                    indices = indices_per_class[label]
+                    if len(indices) > 0:
+                        random.shuffle(indices)
+                        all_indices.extend(indices)
+                batch.extend(all_indices[:remaining_samples])
+
+            batches.append(batch)
+
+            if len(batches) * self.batch_size >= len(self.dataset):
+                break
+
+            for label in exhausted_classes:
+                indices_per_class[label] = self.label_to_indices[label].copy()
+                if self.shuffle:
+                    random.shuffle(indices_per_class[label])
+
+        return iter(batches)
+
+    def __len__(self):
+        total_samples = sum(len(indices) for indices in self.label_to_indices.values())
+        return total_samples // self.batch_size
     
 class EpochSummary():
     def __init__(self, index):

@@ -7,23 +7,23 @@ import numpy as np
 import sys
 import utils
 import os
-from torch_geometric.loader import DataLoader
+from torch_geometric.loader import DataLoader    
 import time
 
 
 ##### TO BE CHANGED FOR EVERY TRY #####
 
-import models.model_a3 as m
-model_name = 'MLP_clique_number'
+import models.model_a4 as m
+model_name = 'modelA4_independence_number'
 
-invariant_target = "clique_number"  #  matching_number, diameter, clique_number, indipendence_number
+invariant_target = "independence_number"  #  matching_number, diameter, clique_number, independence_number
 
 #######################################
 
 torch.manual_seed(123)
 
 model = m.Model(h_channels=m.hidden_channels)
-
+ 
 utils.create_out_dirs(model_name)
 utils.write_model(model_name, model, m.alpha, batch_size=m.train_batch_size)
 
@@ -33,9 +33,9 @@ if torch.cuda.is_available():
 else:
     device = torch.device("cpu")
 
-criterion = m.criterion
 optimizer = torch.optim.Adam(model.parameters(), lr=m.alpha)
 model = model.to(device)
+criterion = m.criterion
 
 
 def train(data_loader, model, epoch: utils.EpochSummary):
@@ -103,12 +103,17 @@ invariant_idx = dataset[0].invariants_order.index(invariant_target)
 
 train_dataset, test_dataset = random_split(dataset, [.8, .2])
 
-train_loader = DataLoader(
-    train_dataset, batch_size=m.train_batch_size, shuffle=True)
-test_loader = DataLoader(
-    test_dataset, batch_size=m.test_batch_size, shuffle=True)
+#class_weights = utils.compute_class_weights(train_dataset, invariant_idx, power=0.5)
+#class_weights = class_weights.to(device)
+#criterion = torch.nn.CrossEntropyLoss(weight=class_weights)
 
-epochs = 50
+train_sampler = utils.StratifiedBatchSampler(train_dataset, invariant_idx, batch_size=m.train_batch_size, min_examples_per_class=10)
+train_loader = DataLoader(train_dataset, batch_sampler=train_sampler)
+test_sampler = utils.StratifiedBatchSampler(test_dataset, invariant_idx, batch_size=m.test_batch_size, min_examples_per_class=5)
+test_loader = DataLoader(test_dataset, batch_sampler=test_sampler)
+#test_loader = DataLoader(test_dataset, batch_size=m.test_batch_size, shuffle=True)
+
+epochs = 100
 epoch_summaries = []
 for epoch in range(epochs):
     epoch_summary = utils.EpochSummary(index=epoch)

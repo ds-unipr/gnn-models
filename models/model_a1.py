@@ -10,10 +10,10 @@ from typing import List
 
 #########################
 
-alpha = 0.01
-train_batch_size = 256
-test_batch_size = 256
-hidden_channels = [8]                                ####provare aumentare hidden channel   32
+alpha = 1e-4
+train_batch_size = 512
+test_batch_size = 512
+hidden_channels = [32]                                ####provare aumentare hidden channel   32
 criterion = torch.nn.CrossEntropyLoss()
 
 class Model(torch.nn.Module):
@@ -29,7 +29,7 @@ class Model(torch.nn.Module):
         )
         self.lin = torch.nn.Linear(
             in_features=h_channels[0],
-            out_features=26,
+            out_features=51,                  #48 diameter, 26 matching_number, 49 clique_number, 51 indipendence number
             bias=True
         )
 

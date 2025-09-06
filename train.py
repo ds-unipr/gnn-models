@@ -10,8 +10,8 @@ import time
 
 ##### TO BE CHANGED FOR EVERY TRY #####
 
-import models.model_l3 as m
-model_name = 'modelL3'
+import models.model_d5 as m
+model_name = 'modelD5_adiacenza'
 
 #######################################
 
@@ -73,7 +73,7 @@ dataset = RandomUndirectedGraphsDataset(root="data")
 dataset = dataset.shuffle()
 
 
-invariant_idx = dataset[0].invariants_order.index("spectral_radius_laplacian")
+invariant_idx = dataset[0].invariants_order.index("spectral_radius_adjacency")
 
 train_dataset, test_dataset = random_split(dataset, [.8, .2])
 
@@ -82,7 +82,7 @@ train_loader = DataLoader(
 test_loader = DataLoader(
     test_dataset, batch_size=m.test_batch_size, shuffle=True)
 
-epochs = 50
+epochs = 100
 epoch_summaries = []
 for epoch in range(epochs):
     epoch_summary = utils.EpochSummary(index=epoch)

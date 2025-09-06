@@ -39,7 +39,7 @@ else:
 
 model = GraphMLP()
 
-model_name = "MLP_matching_number"
+model_name = "MLP_independence_number"
 utils.create_out_dirs(model_name)
 utils.write_model(model_name, model, alpha=1e-4, batch_size=256)
 
@@ -98,7 +98,7 @@ def test(data_loader, model, return_preds=False):
 
 dataset = RandomUndirectedGraphsDataset(root="data", plain_vector=True)
 
-invariant_idx = dataset.invariants_order.index("matching_number")
+invariant_idx = dataset.invariants_order.index("independence_number")
 
 train_dataset, test_dataset = random_split(dataset, [.8, .2])
 
